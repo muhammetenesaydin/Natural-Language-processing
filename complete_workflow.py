@@ -1,26 +1,44 @@
 """
 Complete Sentiment Analysis Workflow
+Tamamlanmış duygu analizi iş akışı 
 ===================================
 
 This script demonstrates the complete workflow for training a sentiment analysis model
 and using it for inference.
+Bu betik duygu analizi modelinin eğitilmesi ve çıkarım yapması için  yazılmış bir iş akışıdır.
 
 1. Training phase: Train a model on sample data
 2. Saving phase: Save the trained model
 3. Inference phase: Load the trained model and use it for predictions
+
+1- Eğitim bölümü: bu bölümde model eğitimi yapılıyor.
+2- Kayıt Bölümü: bu bölümde model kayediliyor.
+3- Çıkarım Bölümü: bu bölümde eğitilmiş model yeniden yükleip tahmin için kullanılıyor.
 """
 
 import os
+#tensorflow backendi tamamen kısıtlandı. (benim bilgisayarımda hem tensorflow hem torch kurulu olduğu için çakışma oluyordu çözümü bu şekilde.)
 os.environ['TRANSFORMERS_NO_TF'] = '1'
 
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 
-# === TRAINING PHASE ===
+# === TRAINING PHASE ==EĞİTİM BÖLÜMÜ===
 
 class SentimentDataset(torch.utils.data.Dataset):
-    """Custom Dataset class for sentiment data"""
+    """
+    A custom Dataset class for PyTorch.
+    It combines the encodings (input_ids, attention_mask, etc.) 
+    from the Tokenizer with the labels and returns them in a format that the DataLoader can use.
+
+    
+    PyTorch için özel Dataset sınıfı.
+    Tokenizer'dan gelen encodings (input_ids, attention_mask vb.)
+    ile etiketleri (labels) birleştirip DataLoader'ın kullanabileceği
+    formatta döndürür.
+    """
+    
     def __init__(self, encodings, labels):
         self.encodings = encodings
         self.labels = labels
@@ -35,8 +53,11 @@ class SentimentDataset(torch.utils.data.Dataset):
 
 
 def create_training_data():
-    """Create training and validation data"""
-    # Training data
+    """Create training and validation data
+    
+       Eğitim ve doğrulama verilerinin üretilmesi.   
+    """
+    # Training data , Eğitim verisi
     train_texts = [
         "I love this movie, it's fantastic!",
         "This film is terrible, I hate it.",
@@ -55,10 +76,11 @@ def create_training_data():
         "Masterpiece of cinema!",
         "Complete garbage, avoid at all costs."
     ]
-    
+    # positives are labeled 1 and negatives are labeled 0 
+    # pozitifler 1 negatifler 0 şeklinde etiketlenmiş 
     train_labels = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
     
-    # Validation data
+    # Validation data Doğrulama verisi 
     val_texts = [
         "This movie is okay, not great but not bad.",
         "I enjoyed watching this film.",
@@ -72,9 +94,14 @@ def create_training_data():
 
 
 def tokenize_data(train_texts, train_labels, val_texts, val_labels):
-    """Tokenize the text data"""
+    """Tokenize the text data Veriyi tokenize eder."""
+
+    # Here it loads the tokenizer of the distilbert-base-uncased model.
+    # Burada distilbert-base-uncased modelinin tokenizerini yüklüyor. 
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    
+
+    # Burada eğitim ve doğrulama verileri tokenizerden geçirilir.
+    # Here the train and validation data is passed through the tokenizer 
     train_encodings = tokenizer(train_texts, truncation=True, padding=True, max_length=128)
     val_encodings = tokenizer(val_texts, truncation=True, padding=True, max_length=128)
     
@@ -82,10 +109,14 @@ def tokenize_data(train_texts, train_labels, val_texts, val_labels):
 
 
 def train_model():
-    """Train a sentiment analysis model"""
-    print("=== TRAINING PHASE ===")
+    """Train a sentiment analysis model
+       Duygu analizi modeli eğitilir.
+    """
     
-    # Create data
+    print("=== TRAINING PHASE ===")
+
+    # 
+    # Create data dan veriler çekilir.
     train_texts, train_labels, val_texts, val_labels = create_training_data()
     print(f"Training samples: {len(train_texts)}, Validation samples: {len(val_texts)}")
     
