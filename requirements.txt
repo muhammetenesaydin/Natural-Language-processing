@@ -1,0 +1,8 @@
+torch
+transformers[torch]
+datasets
+scikit-learn
+accelerate>=0.26.0
+numpy
+# For pre-trained sentiment analysis model:
+# cardiffnlp/twitter-roberta-base-sentiment-latest
