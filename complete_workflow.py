@@ -115,58 +115,70 @@ def train_model():
     
     print("=== TRAINING PHASE ===")
 
-    # 
-    # Create data dan veriler çekilir.
+    # Data is retrieved from create_data()
+    # create_data() dan veriler çekilir.
     train_texts, train_labels, val_texts, val_labels = create_training_data()
     print(f"Training samples: {len(train_texts)}, Validation samples: {len(val_texts)}")
     
     # Tokenize data
+    # Veriyi tokenize eder.
+    # train_encodings /val_encodings: metinlerin token ID’leri + attention mask’leri
     train_encodings, val_encodings, tokenizer = tokenize_data(
         train_texts, train_labels, val_texts, val_labels
     )
     
     # Create datasets
+    # encodings + labels/etiketler -->pytorch dataset 
     train_dataset = SentimentDataset(train_encodings, train_labels)
     val_dataset = SentimentDataset(val_encodings, val_labels)
     
-    # Create data loaders
+    # Create data loaders 
+    # batch_size=4, 4 örnek bir seferde işleniyor shuffle trainde true  burada veriler rastgele alınacak 
+    # doğrulamada false doğrulama verisi sırayla alınacak. 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=4, shuffle=False)
     
     # Load model
+    # Model Yüklenir. dizi sınıflandırma modeli kullanılıyor. label 2 pozitif veya negatif.
     model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
     
     # Training setup
+    # Eğitim Ortamı
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     model.to(device)
-    
+
+    # optimizasyon algoritması kullanılıyor. AdamW  en yaygın olanlardan.
     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
     
     # Training loop
+    # eğitim döngüsü
     model.train()
     for epoch in range(3):
         print(f"\nEpoch {epoch + 1}/3")
-        total_loss = 0
-        num_batches = 0
+        total_loss = 0 # toplam kayıp 
+        num_batches = 0 # toplam kaç batch işlendiğini görek çin kullanılır.
         
         for batch in train_loader:
-            # Move batch to device
+            # her batch içindeki inpu_ids atention_mask labels (işlem birimine taşınır (cpu/gpu))
             input_ids = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels = batch['labels'].to(device)
             
             # Forward pass
+            # model girişleri işler girişleri işler çıktıyı döner. 
             outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs.loss
             total_loss += loss.item()
             num_batches += 1
             
             # Backward pass
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        
+            
+            optimizer.zero_grad() # gradyanları sıfırlar
+            loss.backward() # gradyan hesaplar 
+            optimizer.step() # modelin ağırlıklarını günceller.
+
+        # epoch bittiğinde ortalam loss hesaplanıyor ve yazdırılıyor 
         avg_loss = total_loss / num_batches
         print(f"  Average training loss: {avg_loss:.4f}")
     
@@ -174,7 +186,9 @@ def train_model():
 
 
 def save_model(model, tokenizer, save_path="./sentiment_model"):
-    """Save the trained model and tokenizer"""
+    """Save the trained model and tokenizer
+       Modeli  ve tokenizeri kaydet.   
+    """
     print(f"\n=== SAVING PHASE ===")
     print(f"Saving model to {save_path}...")
     model.save_pretrained(save_path)
@@ -182,10 +196,12 @@ def save_model(model, tokenizer, save_path="./sentiment_model"):
     print("Model saved successfully!")
 
 
-# === INFERENCE PHASE ===
+# === INFERENCE PHASE ===Çıkarım Bölümü===
 
 def load_model(model_path="./sentiment_model"):
-    """Load the trained model and tokenizer"""
+    """Load the trained model and tokenizer
+       Modeli ve tokenizeri içeri aktarır   
+    """
     print(f"\n=== INFERENCE PHASE ===")
     print("Loading trained model...")
     tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -194,27 +210,35 @@ def load_model(model_path="./sentiment_model"):
 
 
 def predict_sentiment(texts, model, tokenizer):
-    """Predict sentiment for a list of texts"""
+    """Predict sentiment for a list of texts
+       Listedeki cümlelerin sentimentlerini tahmin edelim.  
+    """
     # Tokenize the texts
+    # cümleleri Tokenize edelim
+    # çıktıyı pytorch tensorleri olarak döndürür.
     encodings = tokenizer(texts, truncation=True, padding=True, max_length=128, return_tensors="pt")
     
     # Get predictions
+    # Tahminleri yapalım
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
-    model.eval()
+    model.eval() # evaluation mode dropout off
+
     
-    with torch.no_grad():
+    with torch.no_grad(): #inference sırasında gradient hesaplamayı kapatır.(hız+bellek tasarrufu) 
         input_ids = encodings['input_ids'].to(device)
         attention_mask = encodings['attention_mask'].to(device)
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        predictions = torch.argmax(outputs.logits, dim=1)
+        predictions = torch.argmax(outputs.logits, dim=1)  # Output logits modelin her bir sınıf için verdiği skorlardır.
+        #dim=1  en yüksek skora sahip sınıf seçilir (pozitif negatif) şeklinde.
     
     # Convert to labels
+    
     results = []
     for text, pred in zip(texts, predictions):
-        sentiment = "Positive" if pred.item() == 1 else "Negative"
-        confidence = torch.softmax(outputs.logits, dim=1)[0][pred].item()
-        results.append((text, sentiment, confidence))
+        sentiment = "Positive" if pred.item() == 1 else "Negative" # modelin sınıf tahmini burada yapılır.etiket burada atanır. 
+        confidence = torch.softmax(outputs.logits, dim=1)[0][pred].item() #tahmin edilen sınıfın olasılığı
+        results.append((text, sentiment, confidence)) # sonuç (metin, duygu, güven skoru.) 
     
     return results
 
@@ -224,17 +248,18 @@ def main():
     print("Complete Sentiment Analysis Workflow")
     print("=" * 40)
     
-    # 1. Training Phase
+    # 1. Training Phase 1. Bölüm 
     model, tokenizer = train_model()
     
-    # 2. Saving Phase
+    # 2. Saving Phase 2. Bölüm 
     save_model(model, tokenizer)
     
-    # 3. Inference Phase
+    # 3. Inference Phase  3. Bölüm 
     # Load the trained model
     model, tokenizer = load_model()
     
     # Test with sample sentences
+    # Test için örnekler.
     test_texts = [
         "This movie is absolutely wonderful!",
         "I didn't like this film at all.",
