@@ -1,5 +1,4 @@
-# Sentiment Analysis with Pre-trained Models
-# Önceden Eğitilmiş Modellerle Duygu Analizi
+# Sentiment Analysis with Pre-trained Models -Önceden Eğitilmiş Modellerle Duygu Analizi
 
 This project implements sentiment analysis using transformer models to classify text as positive, negative, or neutral. It includes four main scripts:
 Bu proje, metinleri pozitif, negatif veya nötr olarak sınıflandırmak için dönüştürücü modelleri kullanarak duygu analizi uygular. Dört ana betik içerir:
@@ -173,3 +172,4 @@ Positive   | The acting was superb and the plot was engaging.
 Positive   | Worst movie I've ever seen, complete waste of time.
 Positive   | It was okay, nothing special but not bad either.
 ```
+
